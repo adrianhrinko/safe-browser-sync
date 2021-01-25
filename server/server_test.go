@@ -35,7 +35,7 @@ func TestPing(t *testing.T) {
 }
 
 func TestCommand(t *testing.T) {
-	req, err := http.NewRequest("POST", "/v2/command/", nil)
+	req, err := http.NewRequest("POST", "/sync/command/", nil)
 	assert.Nil(t, err)
 
 	rr := httptest.NewRecorder()

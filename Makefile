@@ -4,7 +4,7 @@ BUILD_TIME := $(shell date +%s)
 
 .PHONY: all build test lint clean
 
-all: lint test build
+all: lint build
 
 protobuf:
 	protoc -I schema/protobuf/sync_pb/ schema/protobuf/sync_pb/*.proto --go_out=schema/protobuf/sync_pb/

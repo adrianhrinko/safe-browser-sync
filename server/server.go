@@ -62,10 +62,9 @@ func setupRouter(ctx context.Context, logger *zerolog.Logger) (context.Context, 
 	redis := cache.NewRedisClient()
 	cache := cache.NewCache(cache.NewRedisClientWithPrometheus(redis, "redis"))
 
-	r.Mount("/v2", controller.SyncRouter(
+	r.Mount("/sync", controller.SyncRouter(
 		cache,
 		datastore.NewDatastoreWithPrometheus(db, "dynamo")))
-	r.Get("/metrics", batware.Metrics())
 
 	log.Info().
 		Str("version", version).

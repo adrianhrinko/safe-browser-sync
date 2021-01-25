@@ -76,7 +76,7 @@ func (suite *ControllerTestSuite) TestCommand() {
 	body, err := proto.Marshal(msg)
 	suite.Require().NoError(err, "proto.Marshal should succeed")
 
-	req, err := http.NewRequest("POST", "v2/command/", bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", "sync/command/", bytes.NewBuffer(body))
 	suite.Require().NoError(err, "NewRequest should succeed")
 	req.Header.Set("Authorization", "Bearer token")
 
@@ -105,7 +105,7 @@ func (suite *ControllerTestSuite) TestCommand() {
 	err = zw.Close()
 	suite.Require().NoError(err, "gzip close should succeed")
 
-	req, err = http.NewRequest("POST", "v2/command/", buf)
+	req, err = http.NewRequest("POST", "sync/command/", buf)
 	suite.Require().NoError(err, "NewRequest should succeed")
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Encoding", "gzip")
