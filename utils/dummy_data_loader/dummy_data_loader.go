@@ -2,15 +2,11 @@ package main
 
 import (
 	"bytes"
-	"crypto/ed25519"
 	"crypto/rand"
-	"crypto/sha512"
-	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -19,7 +15,6 @@ import (
 	"github.com/brave/go-sync/utils"
 	"github.com/cosmos/go-bip39"
 	"github.com/skip2/go-qrcode"
-	"golang.org/x/crypto/hkdf"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -29,44 +24,14 @@ func check(e error) {
 	}
 }
 
-func GenerateSigningKeys(seed []byte) ([]byte, []byte, error) {
-	salt := []byte{
-		72, 203, 156, 43, 64, 229, 225, 127, 214, 158, 50, 29, 130,
-		186, 182, 207, 6, 108, 47, 254, 245, 71, 198, 109, 44, 108,
-		32, 193, 221, 126, 119, 143, 112, 113, 87, 184, 239, 231, 230,
-		234, 28, 135, 54, 42, 9, 243, 39, 30, 179, 147, 194, 211,
-		212, 239, 225, 52, 192, 219, 145, 40, 95, 19, 142, 98}
-	info := []byte("sync-auth-key")
-	r := hkdf.New(sha512.New, seed, salt, info)
-
-	publicKey, privateKey, err := ed25519.GenerateKey(r)
-	if err != nil {
-		return nil, nil, fmt.Errorf("generate key error: %w", err)
-	}
-
-	return privateKey, publicKey, nil
-}
-
-func GenerateToken(publicKey []byte, privateKey []byte, timestamp int64) (string, error) {
-	timestampBytes := []byte(strconv.FormatInt(timestamp, 10))
-
-	signedTimestampBytes := ed25519.Sign(privateKey, timestampBytes)
-	publicKeyHex := strings.ToUpper(hex.EncodeToString(publicKey))
-
-	token := hex.EncodeToString(timestampBytes) + "|" +
-		hex.EncodeToString(signedTimestampBytes) + "|" + publicKeyHex
-
-	return base64.URLEncoding.EncodeToString([]byte(token)), nil
-}
-
 func CreateDummyData() {
 	seed := make([]byte, 32)
 	rand.Read(seed)
 
-	prk, puk, err := GenerateSigningKeys(seed)
+	prk, puk, err := utils.GenerateSigningKeys(seed)
 	check(err)
 
-	token, err := GenerateToken(puk, prk, utils.UnixMilli(time.Now()))
+	token, err := utils.GenerateToken(puk, prk, utils.UnixMilli(time.Now()))
 	check(err)
 
 	mnemonic, err := bip39.NewMnemonic(seed)
@@ -76,6 +41,8 @@ func CreateDummyData() {
 	err = qrcode.WriteFile(seedHex, qrcode.Medium, 300, "qr.png")
 	check(err)
 	err = ioutil.WriteFile("code.txt", []byte(mnemonic), 0644)
+	check(err)
+	err = ioutil.WriteFile("seed.txt", seed, 0644)
 	check(err)
 
 	client := &http.Client{}
