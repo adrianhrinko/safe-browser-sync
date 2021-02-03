@@ -1,15 +1,18 @@
 package utils
 
 import (
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/ed25519"
 	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 
@@ -47,10 +50,14 @@ func GenerateToken(publicKey []byte, privateKey []byte, timestamp int64) (string
 }
 
 func ValidMAC(message, messageMAC, key []byte) bool {
+	expectedMAC := GetMAC(message, key)
+	return hmac.Equal(messageMAC, expectedMAC)
+}
+
+func GetMAC(message, key []byte) []byte {
 	mac := hmac.New(sha256.New, key)
 	mac.Write(message)
-	expectedMAC := mac.Sum(nil)
-	return hmac.Equal(messageMAC, expectedMAC)
+	return mac.Sum(nil)
 }
 
 func AESCBCDecrypt(encr_key []byte, ciphertext []byte, hmac_key []byte) []byte {
@@ -86,4 +93,47 @@ func AESCBCDecrypt(encr_key []byte, ciphertext []byte, hmac_key []byte) []byte {
 	}
 
 	return to_decrypt
+}
+
+func AESCBCEncrypt(encr_key []byte, plaintext []byte, hmac_key []byte) []byte {
+
+	iv := make([]byte, len(encr_key))
+	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
+		panic(err)
+	}
+
+	ciphertext := AESCBCEncryptBasic(iv, encr_key, plaintext)
+
+	mac := GetMAC(ciphertext, hmac_key)
+	ciphertext = append(iv, ciphertext...)
+	ciphertext = append(ciphertext, mac...)
+
+	return ciphertext
+}
+
+func AESCBCEncryptBasic(iv []byte, encr_key []byte, plaintext []byte) []byte {
+
+	if len(iv) != len(encr_key) {
+		panic("len(iv) != len(encr_key)")
+	}
+
+	padded_plaintext := plaintext
+	//pad
+	if len(plaintext)%aes.BlockSize != 0 {
+		padding := aes.BlockSize - len(plaintext)%aes.BlockSize
+		padtext := bytes.Repeat([]byte{byte(padding)}, padding)
+		padded_plaintext = append(plaintext, padtext...)
+	}
+
+	block, err := aes.NewCipher(encr_key)
+	if err != nil {
+		panic(err)
+	}
+
+	ciphertext := make([]byte, len(padded_plaintext))
+
+	mode := cipher.NewCBCEncrypter(block, iv)
+	mode.CryptBlocks(ciphertext, padded_plaintext)
+
+	return ciphertext
 }

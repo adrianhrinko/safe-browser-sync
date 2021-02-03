@@ -258,6 +258,31 @@ func FetchPrefs(seed []byte) {
 		fmt.Println("_____________________________________")
 	}
 
+	fmt.Println(GenerateKeyName(enc_key, mac_key))
+}
+
+func GenerateKeyName(enc_key []byte, mac_key []byte) string {
+	nigori_key_name := "nigori-key"
+	iv := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+
+	type_size_bytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(type_size_bytes, 4)
+	key_type_bytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(key_type_bytes, 1)
+
+	nigori_key_name_length_bytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(nigori_key_name_length_bytes, uint32(len(nigori_key_name)))
+	nigori_key_name_bytes := []byte(nigori_key_name)
+
+	result := append(type_size_bytes, key_type_bytes...)
+	result = append(result, nigori_key_name_length_bytes...)
+	result = append(result, nigori_key_name_bytes...)
+
+	ciphertext := utils.AESCBCEncryptBasic(iv, enc_key, result)
+	mac := utils.GetMAC(ciphertext, mac_key)
+	ciphertext = append(ciphertext, mac...)
+
+	return b64.StdEncoding.EncodeToString(ciphertext)
 }
 
 func check(e error) {
