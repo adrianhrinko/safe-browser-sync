@@ -13,11 +13,21 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"errors"
 	"strconv"
 	"strings"
-
+	b64 "encoding/base64"
+	"encoding/binary"
 	"golang.org/x/crypto/hkdf"
+	"golang.org/x/crypto/scrypt"
+	"github.com/cosmos/go-bip39"
 )
+
+func GenRandomBytes(size int) []byte {
+	seed := make([]byte, size)
+	rand.Read(seed)
+	return seed
+}
 
 func GenerateSigningKeys(seed []byte) ([]byte, []byte, error) {
 	salt := []byte{
@@ -60,26 +70,26 @@ func GetMAC(message, key []byte) []byte {
 	return mac.Sum(nil)
 }
 
-func AESCBCDecrypt(encr_key []byte, ciphertext []byte, hmac_key []byte) []byte {
+func AESCBCDecrypt(encr_key []byte, ciphertext []byte, hmac_key []byte) ([]byte, error) {
 
 	block, err := aes.NewCipher(encr_key)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	if len(ciphertext) < 2*aes.BlockSize+32 {
-		panic("ciphertext too short")
+		return nil, errors.New("ciphertext too short")
 	}
 	iv := ciphertext[:aes.BlockSize]
 	hmac := ciphertext[(len(ciphertext) - 32):]
 	to_decrypt := ciphertext[aes.BlockSize:(len(ciphertext) - 32)]
 
 	if !ValidMAC(to_decrypt, hmac, hmac_key) {
-		panic("Invalid MAC")
+		return nil, errors.New("Invalid MAC")
 	}
 
 	if len(ciphertext)%aes.BlockSize != 0 {
-		panic("ciphertext is not a multiple of the block size")
+		return nil, errors.New("ciphertext is not a multiple of the block size")
 	}
 
 	mode := cipher.NewCBCDecrypter(block, iv)
@@ -92,29 +102,33 @@ func AESCBCDecrypt(encr_key []byte, ciphertext []byte, hmac_key []byte) []byte {
 		to_decrypt = to_decrypt[:(len(to_decrypt) - pad_len)]
 	}
 
-	return to_decrypt
+	return to_decrypt, nil
 }
 
-func AESCBCEncrypt(encr_key []byte, plaintext []byte, hmac_key []byte) []byte {
+func AESCBCEncrypt(encr_key []byte, plaintext []byte, hmac_key []byte) ([]byte, error) {
 
 	iv := make([]byte, len(encr_key))
 	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	ciphertext := AESCBCEncryptBasic(iv, encr_key, plaintext)
+	ciphertext, err := AESCBCEncryptBasic(iv, encr_key, plaintext)
+
+	if err != nil {
+		return nil, err
+	}
 
 	mac := GetMAC(ciphertext, hmac_key)
 	ciphertext = append(iv, ciphertext...)
 	ciphertext = append(ciphertext, mac...)
 
-	return ciphertext
+	return ciphertext, nil
 }
 
-func AESCBCEncryptBasic(iv []byte, encr_key []byte, plaintext []byte) []byte {
+func AESCBCEncryptBasic(iv []byte, encr_key []byte, plaintext []byte) ([]byte, error) {
 
 	if len(iv) != len(encr_key) {
-		panic("len(iv) != len(encr_key)")
+		return nil, errors.New("len(iv) != len(encr_key)")
 	}
 
 	padded_plaintext := plaintext
@@ -127,7 +141,7 @@ func AESCBCEncryptBasic(iv []byte, encr_key []byte, plaintext []byte) []byte {
 
 	block, err := aes.NewCipher(encr_key)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	ciphertext := make([]byte, len(padded_plaintext))
@@ -135,5 +149,54 @@ func AESCBCEncryptBasic(iv []byte, encr_key []byte, plaintext []byte) []byte {
 	mode := cipher.NewCBCEncrypter(block, iv)
 	mode.CryptBlocks(ciphertext, padded_plaintext)
 
-	return ciphertext
+	return ciphertext, nil
+}
+
+func GenerateKeyName(enc_key []byte, mac_key []byte) (string, error) {
+	nigori_key_name := "nigori-key"
+	iv := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+
+	type_size_bytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(type_size_bytes, 4)
+	key_type_bytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(key_type_bytes, 1)
+
+	nigori_key_name_length_bytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(nigori_key_name_length_bytes, uint32(len(nigori_key_name)))
+	nigori_key_name_bytes := []byte(nigori_key_name)
+
+	result := append(type_size_bytes, key_type_bytes...)
+	result = append(result, nigori_key_name_length_bytes...)
+	result = append(result, nigori_key_name_bytes...)
+
+	ciphertext, err:= AESCBCEncryptBasic(iv, enc_key, result)
+	if err != nil {
+		return "", err
+	}
+
+	mac := GetMAC(ciphertext, mac_key)
+	ciphertext = append(ciphertext, mac...)
+
+	return b64.StdEncoding.EncodeToString(ciphertext), nil
+}
+
+func GetMnemonic(seed []byte) (string, error) {
+	return bip39.NewMnemonic(seed)
+}
+
+func GetEncAndHmacKey(seed []byte, salt []byte) ([]byte, []byte, error) {
+	mnemonic, err := GetMnemonic(seed)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	enc_key_n_mac_key, err := scrypt.Key([]byte(mnemonic), salt, 8192, 8, 11, 32)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	enc_key := enc_key_n_mac_key[:16]
+	mac_key := enc_key_n_mac_key[16:]
+
+	return enc_key, mac_key, nil
 }

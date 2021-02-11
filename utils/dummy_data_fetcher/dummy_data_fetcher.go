@@ -14,9 +14,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/brave/go-sync/schema/protobuf/sync_pb"
 	"github.com/brave/go-sync/utils"
-	"github.com/cosmos/go-bip39"
 	"github.com/golang/protobuf/proto"
-	"golang.org/x/crypto/scrypt"
+	"github.com/google/uuid"
 )
 
 const (
@@ -105,18 +104,14 @@ func FetchPrefs(seed []byte) {
 	check(err)
 	salt, err := b64.StdEncoding.DecodeString(*nigori.CustomPassphraseKeyDerivationSalt)
 	check(err)
-
-	mnemonic, err := bip39.NewMnemonic(seed)
+	fmt.Println(len(salt))
+	enc_key, mac_key, err := utils.GetEncAndHmacKey(seed, salt)
 	check(err)
-
-	enc_key_n_mac_key, err := scrypt.Key([]byte(mnemonic), salt, 8192, 8, 11, 32)
-	check(err)
-	enc_key := enc_key_n_mac_key[:16]
-	mac_key := enc_key_n_mac_key[16:]
 
 	//KEYBAG:
 	fmt.Println("___DECRYPTED_KEYBAG___")
-	b := utils.AESCBCDecrypt(enc_key, key_blob, mac_key)
+	b, err := utils.AESCBCDecrypt(enc_key, key_blob, mac_key)
+	check(err)
 	keybag := &sync_pb.NigoriKeyBag{}
 	err = proto.Unmarshal(b, keybag)
 	check(err)
@@ -146,9 +141,21 @@ func FetchPrefs(seed []byte) {
 
 	fmt.Println("___entries___")
 	for _, entry := range res_message.GetUpdates.Entries {
-		pref_blob, err := b64.StdEncoding.DecodeString(*entry.Specifics.GetEncrypted().Blob)
+		cguid, err := b64.StdEncoding.DecodeString(*entry.OriginatorCacheGuid)
+		dguid, err := uuid.FromBytes(cguid)
 		check(err)
-		p := utils.AESCBCDecrypt(enc_key, pref_blob, mac_key)
+		fmt.Println(dguid)
+		fmt.Println(cguid)
+		fmt.Println(len(cguid))
+		cguid, err = b64.StdEncoding.DecodeString(*entry.ClientDefinedUniqueTag)
+		check(err)
+		fmt.Println(cguid)
+		fmt.Println(len(cguid))
+		pref_blob, err := b64.StdEncoding.DecodeString(*entry.Specifics.GetEncrypted().Blob)
+
+		check(err)
+		p, err := utils.AESCBCDecrypt(enc_key, pref_blob, mac_key)
+		check(err)
 		pref := &sync_pb.EntitySpecifics{}
 		err = proto.Unmarshal(p, pref)
 		check(err)
@@ -182,7 +189,8 @@ func FetchPrefs(seed []byte) {
 	for _, entry := range res_message.GetUpdates.Entries {
 		pref_blob, err := b64.StdEncoding.DecodeString(*entry.Specifics.GetEncrypted().Blob)
 		check(err)
-		p := utils.AESCBCDecrypt(enc_key, pref_blob, mac_key)
+		p, err := utils.AESCBCDecrypt(enc_key, pref_blob, mac_key)
+		check(err)
 		pref := &sync_pb.EntitySpecifics{}
 		err = proto.Unmarshal(p, pref)
 		check(err)
@@ -216,7 +224,8 @@ func FetchPrefs(seed []byte) {
 	for _, entry := range res_message.GetUpdates.Entries {
 		pref_blob, err := b64.StdEncoding.DecodeString(*entry.Specifics.GetEncrypted().Blob)
 		check(err)
-		p := utils.AESCBCDecrypt(enc_key, pref_blob, mac_key)
+		p, err := utils.AESCBCDecrypt(enc_key, pref_blob, mac_key)
+		check(err)
 		pref := &sync_pb.EntitySpecifics{}
 		err = proto.Unmarshal(p, pref)
 		check(err)
@@ -250,7 +259,8 @@ func FetchPrefs(seed []byte) {
 	for _, entry := range res_message.GetUpdates.Entries {
 		pref_blob, err := b64.StdEncoding.DecodeString(*entry.Specifics.GetEncrypted().Blob)
 		check(err)
-		p := utils.AESCBCDecrypt(enc_key, pref_blob, mac_key)
+		p, err := utils.AESCBCDecrypt(enc_key, pref_blob, mac_key)
+		check(err)
 		pref := &sync_pb.EntitySpecifics{}
 		err = proto.Unmarshal(p, pref)
 		check(err)
@@ -258,31 +268,9 @@ func FetchPrefs(seed []byte) {
 		fmt.Println("_____________________________________")
 	}
 
-	fmt.Println(GenerateKeyName(enc_key, mac_key))
-}
-
-func GenerateKeyName(enc_key []byte, mac_key []byte) string {
-	nigori_key_name := "nigori-key"
-	iv := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-
-	type_size_bytes := make([]byte, 4)
-	binary.BigEndian.PutUint32(type_size_bytes, 4)
-	key_type_bytes := make([]byte, 4)
-	binary.BigEndian.PutUint32(key_type_bytes, 1)
-
-	nigori_key_name_length_bytes := make([]byte, 4)
-	binary.BigEndian.PutUint32(nigori_key_name_length_bytes, uint32(len(nigori_key_name)))
-	nigori_key_name_bytes := []byte(nigori_key_name)
-
-	result := append(type_size_bytes, key_type_bytes...)
-	result = append(result, nigori_key_name_length_bytes...)
-	result = append(result, nigori_key_name_bytes...)
-
-	ciphertext := utils.AESCBCEncryptBasic(iv, enc_key, result)
-	mac := utils.GetMAC(ciphertext, mac_key)
-	ciphertext = append(ciphertext, mac...)
-
-	return b64.StdEncoding.EncodeToString(ciphertext)
+	keyname, err := utils.GenerateKeyName(enc_key, mac_key)
+	check(err)
+	fmt.Println(keyname)
 }
 
 func check(e error) {
