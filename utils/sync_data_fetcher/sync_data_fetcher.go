@@ -15,7 +15,6 @@ import (
 	"github.com/brave/go-sync/schema/protobuf/sync_pb"
 	"github.com/brave/go-sync/utils"
 	"github.com/golang/protobuf/proto"
-	"github.com/google/uuid"
 )
 
 const (
@@ -141,16 +140,6 @@ func FetchPrefs(seed []byte) {
 
 	fmt.Println("___entries___")
 	for _, entry := range res_message.GetUpdates.Entries {
-		cguid, err := b64.StdEncoding.DecodeString(*entry.OriginatorCacheGuid)
-		dguid, err := uuid.FromBytes(cguid)
-		check(err)
-		fmt.Println(dguid)
-		fmt.Println(cguid)
-		fmt.Println(len(cguid))
-		cguid, err = b64.StdEncoding.DecodeString(*entry.ClientDefinedUniqueTag)
-		check(err)
-		fmt.Println(cguid)
-		fmt.Println(len(cguid))
 		pref_blob, err := b64.StdEncoding.DecodeString(*entry.Specifics.GetEncrypted().Blob)
 
 		check(err)

@@ -10,17 +10,18 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/base64"
-	"encoding/hex"
-	"fmt"
-	"io"
-	"errors"
-	"strconv"
-	"strings"
 	b64 "encoding/base64"
 	"encoding/binary"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"io"
+	"strconv"
+	"strings"
+
+	"github.com/cosmos/go-bip39"
 	"golang.org/x/crypto/hkdf"
 	"golang.org/x/crypto/scrypt"
-	"github.com/cosmos/go-bip39"
 )
 
 func GenRandomBytes(size int) []byte {
@@ -169,7 +170,7 @@ func GenerateKeyName(enc_key []byte, mac_key []byte) (string, error) {
 	result = append(result, nigori_key_name_length_bytes...)
 	result = append(result, nigori_key_name_bytes...)
 
-	ciphertext, err:= AESCBCEncryptBasic(iv, enc_key, result)
+	ciphertext, err := AESCBCEncryptBasic(iv, enc_key, result)
 	if err != nil {
 		return "", err
 	}
@@ -184,13 +185,17 @@ func GetMnemonic(seed []byte) (string, error) {
 	return bip39.NewMnemonic(seed)
 }
 
+func Scrypt(input []byte, salt []byte) ([]byte, error) {
+	return scrypt.Key(input, salt, 8192, 8, 11, 32)
+}
+
 func GetEncAndHmacKey(seed []byte, salt []byte) ([]byte, []byte, error) {
 	mnemonic, err := GetMnemonic(seed)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	enc_key_n_mac_key, err := scrypt.Key([]byte(mnemonic), salt, 8192, 8, 11, 32)
+	enc_key_n_mac_key, err := Scrypt([]byte(mnemonic), salt)
 	if err != nil {
 		return nil, nil, err
 	}
