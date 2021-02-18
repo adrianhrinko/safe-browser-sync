@@ -1,19 +1,17 @@
 package main
 
 import (
-	"bytes"
 	b64 "encoding/base64"
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	sync_chain_specs "github.com/brave/go-sync/safe_browser/sync_chain_specifics"
+	"github.com/brave/go-sync/safe_browser/sync_crypto"
 	"github.com/brave/go-sync/schema/protobuf/sync_pb"
-	"github.com/brave/go-sync/utils"
 	"github.com/golang/protobuf/proto"
 )
 
@@ -58,35 +56,15 @@ func getClientToServerGUMsg(marker []*sync_pb.DataTypeProgressMarker,
 	}
 }
 
-func FetchPrefs(seed []byte) {
-	prk, puk, err := utils.GenerateSigningKeys(seed)
-	check(err)
-
-	token, err := utils.GenerateToken(puk, prk, utils.UnixMilli(time.Now()))
-	check(err)
-
-	client := &http.Client{}
-
+func FetchPrefs(specs *sync_chain_specs.SyncChainSpecifics) {
 	//NIGORI
 	fmt.Println("NIGORI:")
 	fmt.Println("___whole_message___")
 	marker := getMarker([]int64{0}, []int32{nigoriType})
 	msg := getClientToServerGUMsg(marker, sync_pb.SyncEnums_GU_TRIGGER, true, nil)
-	body, err := proto.Marshal(msg)
-	req, err := http.NewRequest("POST", "http://localhost:8295/sync/command/", bytes.NewBuffer(body))
-	req.Header.Set("Authorization", "Bearer "+token)
-	res, err := client.Do(req)
+	res_message, err := specs.MakeRequestToServer(msg)
 	check(err)
-	if res.StatusCode != 200 {
-		panic(errors.New(res.Status))
-	}
-	fmt.Println(res.Status)
 
-	res_body, err := ioutil.ReadAll(res.Body)
-	check(err)
-	res_message := &sync_pb.ClientToServerResponse{}
-	err = proto.Unmarshal(res_body, res_message)
-	check(err)
 	fmt.Println(proto.MarshalTextString(res_message))
 
 	if len(res_message.GetUpdates.Entries) != 1 && strings.Contains(strings.ToLower(*res_message.GetUpdates.Entries[0].Name), "nigori") {
@@ -104,12 +82,11 @@ func FetchPrefs(seed []byte) {
 	salt, err := b64.StdEncoding.DecodeString(*nigori.CustomPassphraseKeyDerivationSalt)
 	check(err)
 	fmt.Println(len(salt))
-	enc_key, mac_key, err := utils.GetEncAndHmacKey(seed, salt)
 	check(err)
 
 	//KEYBAG:
 	fmt.Println("___DECRYPTED_KEYBAG___")
-	b, err := utils.AESCBCDecrypt(enc_key, key_blob, mac_key)
+	b, err := sync_crypto.AESCBCDecrypt(specs.EncKey, key_blob, specs.HmacKey)
 	check(err)
 	keybag := &sync_pb.NigoriKeyBag{}
 	err = proto.Unmarshal(b, keybag)
@@ -121,20 +98,7 @@ func FetchPrefs(seed []byte) {
 	fmt.Println("___whole_message___")
 	marker = getMarker([]int64{0}, []int32{prefsType})
 	msg = getClientToServerGUMsg(marker, sync_pb.SyncEnums_GU_TRIGGER, false, nil)
-	body, err = proto.Marshal(msg)
-	req, err = http.NewRequest("POST", "http://localhost:8295/sync/command/", bytes.NewBuffer(body))
-	req.Header.Set("Authorization", "Bearer "+token)
-	res, err = client.Do(req)
-	check(err)
-	if res.StatusCode != 200 {
-		panic(errors.New(res.Status))
-	}
-	fmt.Println(res.Status)
-
-	res_body, err = ioutil.ReadAll(res.Body)
-	check(err)
-	res_message = &sync_pb.ClientToServerResponse{}
-	err = proto.Unmarshal(res_body, res_message)
+	res_message, err = specs.MakeRequestToServer(msg)
 	check(err)
 	fmt.Println(proto.MarshalTextString(res_message))
 
@@ -143,7 +107,7 @@ func FetchPrefs(seed []byte) {
 		pref_blob, err := b64.StdEncoding.DecodeString(*entry.Specifics.GetEncrypted().Blob)
 
 		check(err)
-		p, err := utils.AESCBCDecrypt(enc_key, pref_blob, mac_key)
+		p, err := sync_crypto.AESCBCDecrypt(specs.EncKey, pref_blob, specs.HmacKey)
 		check(err)
 		pref := &sync_pb.EntitySpecifics{}
 		err = proto.Unmarshal(p, pref)
@@ -157,20 +121,7 @@ func FetchPrefs(seed []byte) {
 	fmt.Println("___whole_message___")
 	marker = getMarker([]int64{0}, []int32{devInfoType})
 	msg = getClientToServerGUMsg(marker, sync_pb.SyncEnums_GU_TRIGGER, false, nil)
-	body, err = proto.Marshal(msg)
-	req, err = http.NewRequest("POST", "http://localhost:8295/sync/command/", bytes.NewBuffer(body))
-	req.Header.Set("Authorization", "Bearer "+token)
-	res, err = client.Do(req)
-	check(err)
-	if res.StatusCode != 200 {
-		panic(errors.New(res.Status))
-	}
-	fmt.Println(res.Status)
-
-	res_body, err = ioutil.ReadAll(res.Body)
-	check(err)
-	res_message = &sync_pb.ClientToServerResponse{}
-	err = proto.Unmarshal(res_body, res_message)
+	res_message, err = specs.MakeRequestToServer(msg)
 	check(err)
 	fmt.Println(proto.MarshalTextString(res_message))
 
@@ -178,7 +129,7 @@ func FetchPrefs(seed []byte) {
 	for _, entry := range res_message.GetUpdates.Entries {
 		pref_blob, err := b64.StdEncoding.DecodeString(*entry.Specifics.GetEncrypted().Blob)
 		check(err)
-		p, err := utils.AESCBCDecrypt(enc_key, pref_blob, mac_key)
+		p, err := sync_crypto.AESCBCDecrypt(specs.EncKey, pref_blob, specs.HmacKey)
 		check(err)
 		pref := &sync_pb.EntitySpecifics{}
 		err = proto.Unmarshal(p, pref)
@@ -192,20 +143,7 @@ func FetchPrefs(seed []byte) {
 	fmt.Println("___whole_message___")
 	marker = getMarker([]int64{0}, []int32{sessionType})
 	msg = getClientToServerGUMsg(marker, sync_pb.SyncEnums_GU_TRIGGER, false, nil)
-	body, err = proto.Marshal(msg)
-	req, err = http.NewRequest("POST", "http://localhost:8295/sync/command/", bytes.NewBuffer(body))
-	req.Header.Set("Authorization", "Bearer "+token)
-	res, err = client.Do(req)
-	check(err)
-	if res.StatusCode != 200 {
-		panic(errors.New(res.Status))
-	}
-	fmt.Println(res.Status)
-
-	res_body, err = ioutil.ReadAll(res.Body)
-	check(err)
-	res_message = &sync_pb.ClientToServerResponse{}
-	err = proto.Unmarshal(res_body, res_message)
+	res_message, err = specs.MakeRequestToServer(msg)
 	check(err)
 	fmt.Println(proto.MarshalTextString(res_message))
 
@@ -213,7 +151,7 @@ func FetchPrefs(seed []byte) {
 	for _, entry := range res_message.GetUpdates.Entries {
 		pref_blob, err := b64.StdEncoding.DecodeString(*entry.Specifics.GetEncrypted().Blob)
 		check(err)
-		p, err := utils.AESCBCDecrypt(enc_key, pref_blob, mac_key)
+		p, err := sync_crypto.AESCBCDecrypt(specs.EncKey, pref_blob, specs.HmacKey)
 		check(err)
 		pref := &sync_pb.EntitySpecifics{}
 		err = proto.Unmarshal(p, pref)
@@ -227,20 +165,7 @@ func FetchPrefs(seed []byte) {
 	fmt.Println("___whole_message___")
 	marker = getMarker([]int64{0}, []int32{bookmarkType})
 	msg = getClientToServerGUMsg(marker, sync_pb.SyncEnums_GU_TRIGGER, false, nil)
-	body, err = proto.Marshal(msg)
-	req, err = http.NewRequest("POST", "http://localhost:8295/sync/command/", bytes.NewBuffer(body))
-	req.Header.Set("Authorization", "Bearer "+token)
-	res, err = client.Do(req)
-	check(err)
-	if res.StatusCode != 200 {
-		panic(errors.New(res.Status))
-	}
-	fmt.Println(res.Status)
-
-	res_body, err = ioutil.ReadAll(res.Body)
-	check(err)
-	res_message = &sync_pb.ClientToServerResponse{}
-	err = proto.Unmarshal(res_body, res_message)
+	res_message, err = specs.MakeRequestToServer(msg)
 	check(err)
 	fmt.Println(proto.MarshalTextString(res_message))
 
@@ -248,7 +173,7 @@ func FetchPrefs(seed []byte) {
 	for _, entry := range res_message.GetUpdates.Entries {
 		pref_blob, err := b64.StdEncoding.DecodeString(*entry.Specifics.GetEncrypted().Blob)
 		check(err)
-		p, err := utils.AESCBCDecrypt(enc_key, pref_blob, mac_key)
+		p, err := sync_crypto.AESCBCDecrypt(specs.EncKey, pref_blob, specs.HmacKey)
 		check(err)
 		pref := &sync_pb.EntitySpecifics{}
 		err = proto.Unmarshal(p, pref)
@@ -256,10 +181,6 @@ func FetchPrefs(seed []byte) {
 		fmt.Println(proto.MarshalTextString(pref))
 		fmt.Println("_____________________________________")
 	}
-
-	keyname, err := utils.GenerateKeyName(enc_key, mac_key)
-	check(err)
-	fmt.Println(keyname)
 }
 
 func check(e error) {
@@ -269,11 +190,8 @@ func check(e error) {
 }
 
 func main() {
-	seed, err := ioutil.ReadFile("../dummy_data_loader/seed.txt")
+	specs, err := sync_chain_specs.NewFromFile(&http.Client{}, "../sync_data_loader/sync_specs.json")
 	check(err)
-	if seed == nil {
-		panic(errors.New("seed is null!"))
-	}
 
-	FetchPrefs(seed)
+	FetchPrefs(specs)
 }

@@ -9,7 +9,7 @@ import (
 //SafeBrowserSettings stores safe browser configuration
 type SafeBrowserSettings struct {
 	SyncServerURL    string   `json:"syncServerUrl"`
-	EmployeePassHash string   `json:"employeePassHash"`
+	EmployeePassHash []byte   `json:"employeePassHash"`
 	URLAllowlist     []string `json:"urlAllowlist"`
 	URLBlocklist     []string `json:"urlBlocklist"`
 }

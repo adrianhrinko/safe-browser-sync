@@ -15,6 +15,7 @@ import (
 	b64 "encoding/base64"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/brave/go-sync/safe_browser/sync_crypto"
 	"github.com/brave/go-sync/schema/protobuf/sync_pb"
 	"github.com/brave/go-sync/utils"
 	"github.com/google/uuid"
@@ -24,37 +25,37 @@ import (
 
 //SyncChainSpecifics stores sync chain specific data
 type SyncChainSpecifics struct {
-	client      *http.Client `json:"-"`
-	serverURL   string       `json:"serverURL"`
-	cacheGUID   string       `json:"cacheGUID"`
-	seed        []byte       `json:"seed"`
-	salt        []byte       `json:"salt"`
-	encKey      []byte       `json:"-"`
-	hmaKey      []byte       `json:"-"`
-	keyName     string       `json:"-"`
-	prK         []byte       `json:"-"`
-	puK         []byte       `json:"-"`
-	initialized bool         `json:"-"`
+	Client      *http.Client `json:"-"`
+	ServerURL   string       `json:"serverURL"`
+	CacheGUID   string       `json:"cacheGUID"`
+	Seed        []byte       `json:"seed"`
+	Salt        []byte       `json:"salt"`
+	EncKey      []byte       `json:"-"`
+	HmacKey     []byte       `json:"-"`
+	KeyName     string       `json:"-"`
+	PrK         []byte       `json:"-"`
+	PuK         []byte       `json:"-"`
+	Initialized bool         `json:"-"`
 }
 
 // New creates new SyncChainSpecifics struct
 func New(client *http.Client, serverURL string) (*SyncChainSpecifics, error) {
 	syncChainSpecs := &SyncChainSpecifics{}
 
-	seed := utils.GenRandomBytes(32)
-	salt := utils.GenRandomBytes(32)
+	seed := sync_crypto.GenRandomBytes(32)
+	salt := sync_crypto.GenRandomBytes(32)
 
-	encKey, hmacKey, err := utils.GetEncAndHmacKey(seed, salt)
+	encKey, hmacKey, err := sync_crypto.GetEncAndHmacKey(seed, salt)
 	if err != nil {
 		return nil, err
 	}
 
-	keyName, err := utils.GenerateKeyName(encKey, hmacKey)
+	keyName, err := sync_crypto.GenerateKeyName(encKey, hmacKey)
 	if err != nil {
 		return nil, err
 	}
 
-	prK, puK, err := utils.GenerateSigningKeys(seed)
+	prK, puK, err := sync_crypto.GenerateSigningKeys(seed)
 	if err != nil {
 		return nil, err
 	}
@@ -64,17 +65,17 @@ func New(client *http.Client, serverURL string) (*SyncChainSpecifics, error) {
 		return nil, err
 	}
 
-	syncChainSpecs.client = client
-	syncChainSpecs.serverURL = serverURL
-	syncChainSpecs.cacheGUID = cacheGUID
-	syncChainSpecs.seed = seed
-	syncChainSpecs.salt = salt
-	syncChainSpecs.encKey = encKey
-	syncChainSpecs.hmaKey = hmacKey
-	syncChainSpecs.keyName = keyName
-	syncChainSpecs.prK = prK
-	syncChainSpecs.puK = puK
-	syncChainSpecs.initialized = false
+	syncChainSpecs.Client = client
+	syncChainSpecs.ServerURL = serverURL
+	syncChainSpecs.CacheGUID = cacheGUID
+	syncChainSpecs.Seed = seed
+	syncChainSpecs.Salt = salt
+	syncChainSpecs.EncKey = encKey
+	syncChainSpecs.HmacKey = hmacKey
+	syncChainSpecs.KeyName = keyName
+	syncChainSpecs.PrK = prK
+	syncChainSpecs.PuK = puK
+	syncChainSpecs.Initialized = false
 
 	return syncChainSpecs, nil
 }
@@ -99,33 +100,33 @@ func NewFromFile(client *http.Client, specificsFileName string) (*SyncChainSpeci
 		return nil, err
 	}
 
-	encKey, hmacKey, err := utils.GetEncAndHmacKey(syncChainSpecs.seed, syncChainSpecs.salt)
+	encKey, hmacKey, err := sync_crypto.GetEncAndHmacKey(syncChainSpecs.Seed, syncChainSpecs.Salt)
 	if err != nil {
 		return nil, err
 	}
 
-	keyName, err := utils.GenerateKeyName(encKey, hmacKey)
+	keyName, err := sync_crypto.GenerateKeyName(encKey, hmacKey)
 	if err != nil {
 		return nil, err
 	}
 
-	prK, puK, err := utils.GenerateSigningKeys(syncChainSpecs.seed)
+	prK, puK, err := sync_crypto.GenerateSigningKeys(syncChainSpecs.Seed)
 	if err != nil {
 		return nil, err
 	}
 
-	syncChainSpecs.client = client
-	syncChainSpecs.encKey = encKey
-	syncChainSpecs.hmaKey = hmacKey
-	syncChainSpecs.keyName = keyName
-	syncChainSpecs.prK = prK
-	syncChainSpecs.puK = puK
-	syncChainSpecs.initialized = false
+	syncChainSpecs.Client = client
+	syncChainSpecs.EncKey = encKey
+	syncChainSpecs.HmacKey = hmacKey
+	syncChainSpecs.KeyName = keyName
+	syncChainSpecs.PrK = prK
+	syncChainSpecs.PuK = puK
+	syncChainSpecs.Initialized = false
 
 	return syncChainSpecs, nil
 }
 
-func (s SyncChainSpecifics) init() (*sync_pb.ClientToServerResponse, error) {
+func (s SyncChainSpecifics) Init() (*sync_pb.ClientToServerResponse, error) {
 	newClient := sync_pb.SyncEnums_NEW_CLIENT
 	updates := &sync_pb.GetUpdatesMessage{
 		GetUpdatesOrigin: &newClient,
@@ -138,30 +139,32 @@ func (s SyncChainSpecifics) init() (*sync_pb.ClientToServerResponse, error) {
 		Share:           aws.String(""),
 	}
 
-	res, err := s.makeRequestToServer(msg)
+	res, err := s.MakeRequestToServer(msg)
+
+	fmt.Println(s.ServerURL)
 
 	if err != nil {
 		return nil, err
 	}
 
-	s.initialized = true
+	s.Initialized = true
 
 	return res, nil
 }
 
-func (s SyncChainSpecifics) getToken() (string, error) {
-	return utils.GenerateToken(s.puK, s.prK, utils.UnixMilli(time.Now()))
+func (s SyncChainSpecifics) GetToken() (string, error) {
+	return sync_crypto.GenerateToken(s.PuK, s.PrK, utils.UnixMilli(time.Now()))
 }
 
-func (s SyncChainSpecifics) getSeedHex() string {
-	return strings.ToUpper(hex.EncodeToString(s.seed))
+func (s SyncChainSpecifics) GetSeedHex() string {
+	return strings.ToUpper(hex.EncodeToString(s.Seed))
 }
 
-func (s SyncChainSpecifics) getSyncMnemonic() (string, error) {
-	return utils.GetMnemonic(s.seed)
+func (s SyncChainSpecifics) GetSyncMnemonic() (string, error) {
+	return sync_crypto.GetMnemonic(s.Seed)
 }
 
-func (s SyncChainSpecifics) makeRequestToServer(msg *sync_pb.ClientToServerMessage) (*sync_pb.ClientToServerResponse, error) {
+func (s SyncChainSpecifics) MakeRequestToServer(msg *sync_pb.ClientToServerMessage) (*sync_pb.ClientToServerResponse, error) {
 	resMessage := &sync_pb.ClientToServerResponse{}
 	body, err := proto.Marshal(msg)
 
@@ -169,18 +172,18 @@ func (s SyncChainSpecifics) makeRequestToServer(msg *sync_pb.ClientToServerMessa
 		return resMessage, err
 	}
 
-	req, err := http.NewRequest("POST", s.serverURL, bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", s.ServerURL, bytes.NewBuffer(body))
 	if err != nil {
 		return resMessage, err
 	}
 
-	token, err := s.getToken()
+	token, err := s.GetToken()
 	if err != nil {
 		return resMessage, err
 	}
 
 	req.Header.Set("Authorization", "Bearer "+token)
-	res, err := s.client.Do(req)
+	res, err := s.Client.Do(req)
 	if err != nil {
 		return resMessage, err
 	}
@@ -200,7 +203,7 @@ func (s SyncChainSpecifics) makeRequestToServer(msg *sync_pb.ClientToServerMessa
 	return resMessage, err
 }
 
-func (s SyncChainSpecifics) saveToFile(specsFileName string, qrCodeFileName *string) error {
+func (s SyncChainSpecifics) SaveToFile(specsFileName string) error {
 	output, err := json.Marshal(s)
 	if err != nil {
 		return err
@@ -209,16 +212,16 @@ func (s SyncChainSpecifics) saveToFile(specsFileName string, qrCodeFileName *str
 	return ioutil.WriteFile(specsFileName, output, 0644)
 }
 
-func (s SyncChainSpecifics) getSyncQRCode() ([]byte, error) {
-	return qrcode.Encode(s.getSeedHex(), qrcode.Medium, 300)
+func (s SyncChainSpecifics) GetSyncQRCode() ([]byte, error) {
+	return qrcode.Encode(s.GetSeedHex(), qrcode.Medium, 300)
 }
 
-func (s SyncChainSpecifics) saveSyncQRCodeToFile(qrCodeFileName string) error {
-	return qrcode.WriteFile(s.getSeedHex(), qrcode.Medium, 300, qrCodeFileName)
+func (s SyncChainSpecifics) SaveSyncQRCodeToFile(qrCodeFileName string) error {
+	return qrcode.WriteFile(s.GetSeedHex(), qrcode.Medium, 300, qrCodeFileName)
 }
 
-func (s SyncChainSpecifics) saveSyncMnemonicToFile(mnemonicFileName string) error {
-	mnemonic, err := s.getSyncMnemonic()
+func (s SyncChainSpecifics) SaveSyncMnemonicToFile(mnemonicFileName string) error {
+	mnemonic, err := s.GetSyncMnemonic()
 
 	if err != nil {
 		return err

@@ -24,6 +24,8 @@ const (
 	devInfoType          int32  = 154522
 	sessionType          int32  = 50119
 	passwordHashPrefName string = "safe_browser.password_hash"
+	URLBlockListPrefName string = "policy.url_blocklist"
+	URLAllowListPrefName string = "policy.url_allowlist"
 )
 
 func check(e error) {
@@ -210,7 +212,7 @@ func preparePrefsEntity(prefName string, pref interface{},
 		return nil, err
 	}
 
-	prefs.Name = aws.String(passwordHashPrefName)
+	prefs.Name = aws.String(prefName)
 	prefs.Value = aws.String(string(prefJSON))
 
 	prefSpecs := &sync_pb.EntitySpecifics{
@@ -243,8 +245,8 @@ func loadSettings(settings *safe_browser_settings.SafeBrowserSettings,
 	syncSpecs *sync_chain_specs.SyncChainSpecifics) (*sync_pb.ClientToServerResponse, error) {
 
 	passEntity, err := preparePrefsEntity(passwordHashPrefName, settings.EmployeePassHash, syncSpecs)
-	urlBlocklistEntity, err := preparePrefsEntity(passwordHashPrefName, settings.EmployeePassHash, syncSpecs)
-	urlAllowlistEntity, err := preparePrefsEntity(passwordHashPrefName, settings.EmployeePassHash, syncSpecs)
+	urlBlocklistEntity, err := preparePrefsEntity(URLBlockListPrefName, settings.URLBlocklist, syncSpecs)
+	urlAllowlistEntity, err := preparePrefsEntity(URLAllowListPrefName, settings.URLAllowlist, syncSpecs)
 
 	if err != nil {
 		return nil, err

@@ -1,4 +1,4 @@
-package utils
+package sync_crypto
 
 import (
 	"bytes"

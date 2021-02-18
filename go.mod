@@ -10,7 +10,7 @@ require (
 	github.com/go-chi/chi v4.0.3+incompatible
 	github.com/go-redis/redis/v8 v8.0.0-beta.7
 	github.com/golang/protobuf v1.4.2
-	github.com/google/uuid v1.2.0 // indirect
+	github.com/google/uuid v1.2.0
 	github.com/kr/pretty v0.2.0 // indirect
 	github.com/prometheus/client_golang v1.3.0
 	github.com/rs/zerolog v1.18.0
