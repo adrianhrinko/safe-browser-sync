@@ -18,14 +18,24 @@ import (
 )
 
 const (
-	bookmarkType         int32  = 32904
-	prefsType            int32  = 37702
-	nigoriType           int32  = 47745
-	devInfoType          int32  = 154522
-	sessionType          int32  = 50119
-	passwordHashPrefName string = "safe_browser.password_hash"
-	URLBlockListPrefName string = "policy.url_blocklist"
-	URLAllowListPrefName string = "policy.url_allowlist"
+	bookmarkType                              int32  = 32904
+	prefsType                                 int32  = 37702
+	nigoriType                                int32  = 47745
+	devInfoType                               int32  = 154522
+	sessionType                               int32  = 50119
+	passwordHashPrefName                      string = "safe_browser.password_hash"
+	URLBlockListPrefName                      string = "policy.url_blacklist"
+	URLAllowListPrefName                      string = "policy.url_whitelist"
+	sharedClipboardPrefName                   string = "browser.shared_clipboard_enabled"
+	PrintingPrefName                          string = "printing.enabled"
+	editBookmarksPrefName                     string = "bookmarks.editing_enabled"
+	managedBookmarksPrefName                  string = "bookmarks.managed_bookmarks"
+	showManagedBookmarksInBookmarkBarPrefName string = "bookmark_bar.show_managed_bookmarks"
+	managedBookmarksFolderPrefName            string = "bookmarks.managed_bookmarks_folder_name"
+	incognitoModeAvailabilityPrefName         string = "incognito.mode_availability"
+	savingBrowserHistoryPrefName              string = "history.saving_disabled"
+	passwordManagerPrefName                   string = "credentials_enable_service"
+	GoogleSafeSearchPrefName                  string = "settings.force_google_safesearch"
 )
 
 func check(e error) {

@@ -8,10 +8,27 @@ import (
 
 //SafeBrowserSettings stores safe browser configuration
 type SafeBrowserSettings struct {
-	SyncServerURL    string   `json:"syncServerUrl"`
-	EmployeePassHash []byte   `json:"employeePassHash"`
-	URLAllowlist     []string `json:"urlAllowlist"`
-	URLBlocklist     []string `json:"urlBlocklist"`
+	//sync server
+	SyncServerURL string `json:"syncServerUrl"`
+	//auth
+	EmployeePassHash []byte `json:"employeePassHash"`
+	//URL
+	URLAllowlist []string `json:"urlAllowlist"`
+	URLBlocklist []string `json:"urlBlocklist"`
+	//share
+	SharedClipboardEnabled bool `json:"sharedClipboardEnabled"`
+	PrintingEnabled        bool `json:"rintingEnabled"`
+	//bookmarks
+	EditBookmarksEnabled              bool     `json:"editBookmarksEnabled"`
+	ManagedBookmarks                  []string `json:"managedBookmarks"`
+	ShowManagedBookmarksInBookmarkBar bool     `json:"showManagedBookmarksInBookmarkBar"`
+	ManagedBookmarksFolderName        string   `json:"managedBookmarksFolderName"`
+	//data
+	IncognitoModeAvailability    int  `json:"incognitoModeAvailability"`
+	SavingBrowserHistoryDisabled int  `json:"savingBrowserHistoryDisabled"`
+	PasswordManagerEnabled       bool `json:"passwordManagerEnabled"`
+	//safe search
+	ForceGoogleSafeSearch bool "settings.force_google_safesearch"
 }
 
 //FromFile creates new SafeBrowserConfig struct from json file
