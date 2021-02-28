@@ -18,24 +18,26 @@ import (
 )
 
 const (
-	bookmarkType                              int32  = 32904
-	prefsType                                 int32  = 37702
-	nigoriType                                int32  = 47745
-	devInfoType                               int32  = 154522
-	sessionType                               int32  = 50119
-	passwordHashPrefName                      string = "safe_browser.password_hash"
-	URLBlockListPrefName                      string = "policy.url_blacklist"
-	URLAllowListPrefName                      string = "policy.url_whitelist"
-	sharedClipboardPrefName                   string = "browser.shared_clipboard_enabled"
-	PrintingPrefName                          string = "printing.enabled"
-	editBookmarksPrefName                     string = "bookmarks.editing_enabled"
-	managedBookmarksPrefName                  string = "bookmarks.managed_bookmarks"
-	showManagedBookmarksInBookmarkBarPrefName string = "bookmark_bar.show_managed_bookmarks"
-	managedBookmarksFolderPrefName            string = "bookmarks.managed_bookmarks_folder_name"
-	incognitoModeAvailabilityPrefName         string = "incognito.mode_availability"
-	savingBrowserHistoryPrefName              string = "history.saving_disabled"
-	passwordManagerPrefName                   string = "credentials_enable_service"
-	GoogleSafeSearchPrefName                  string = "settings.force_google_safesearch"
+	//sync type
+	bookmarkType int32 = 32904
+	prefsType    int32 = 37702
+	nigoriType   int32 = 47745
+	devInfoType  int32 = 154522
+	sessionType  int32 = 50119
+
+	//pref names
+	passwordHashPrefName              string = "safe_browser.password_hash"
+	URLBlockListPrefName              string = "policy.url_blacklist"
+	URLAllowListPrefName              string = "policy.url_whitelist"
+	sharedClipboardPrefName           string = "browser.shared_clipboard_enabled"
+	printingPrefName                  string = "printing.enabled"
+	editBookmarksPrefName             string = "bookmarks.editing_enabled"
+	managedBookmarksPrefName          string = "bookmarks.managed_bookmarks"
+	incognitoModeAvailabilityPrefName string = "incognito.mode_availability"
+	savingBrowserHistoryPrefName      string = "history.saving_disabled"
+	passwordManagerPrefName           string = "credentials_enable_service"
+	GoogleSafeSearchPrefName          string = "settings.force_google_safesearch"
+	YouTubeRestrictModePrefName       string = "settings.force_youtube_restrict"
 )
 
 func check(e error) {
@@ -257,6 +259,13 @@ func loadSettings(settings *safe_browser_settings.SafeBrowserSettings,
 	passEntity, err := preparePrefsEntity(passwordHashPrefName, settings.EmployeePassHash, syncSpecs)
 	urlBlocklistEntity, err := preparePrefsEntity(URLBlockListPrefName, settings.URLBlocklist, syncSpecs)
 	urlAllowlistEntity, err := preparePrefsEntity(URLAllowListPrefName, settings.URLAllowlist, syncSpecs)
+	sharedClipboardEntity, err := preparePrefsEntity(sharedClipboardPrefName, settings.SharedClipboardEnabled, syncSpecs)
+	printingEntity, err := preparePrefsEntity(printingPrefName, settings.PrintingEnabled, syncSpecs)
+	passwordManagerEntity, err := preparePrefsEntity(passwordManagerPrefName, settings.PasswordManagerEnabled, syncSpecs)
+	googleSearchEntity, err := preparePrefsEntity(GoogleSafeSearchPrefName, settings.ForceGoogleSafeSearch, syncSpecs)
+	browserHistoryEntity, err := preparePrefsEntity(savingBrowserHistoryPrefName, settings.SavingBrowserHistoryDisabled, syncSpecs)
+	editBookmarksEntity, err := preparePrefsEntity(editBookmarksPrefName, settings.EditBookmarksEnabled, syncSpecs)
+	//managedBookmarksEntity, err := preparePrefsEntity(managedBookmarksPrefName, settings.ManagedBookmarks, syncSpecs)
 
 	if err != nil {
 		return nil, err
@@ -266,6 +275,12 @@ func loadSettings(settings *safe_browser_settings.SafeBrowserSettings,
 		passEntity,
 		urlBlocklistEntity,
 		urlAllowlistEntity,
+		sharedClipboardEntity,
+		printingEntity,
+		passwordManagerEntity,
+		googleSearchEntity,
+		browserHistoryEntity,
+		editBookmarksEntity,
 	}
 
 	msg := getClientToServerCommitMsg(entries, aws.String(syncSpecs.CacheGUID))
@@ -332,7 +347,17 @@ func main() {
 			"https://stackoverflow.com/",
 			"https://www.fi.muni.cz/",
 		},
-		URLAllowlist: []string{},
+		URLAllowlist:                 []string{},
+		SharedClipboardEnabled:       false,
+		PrintingEnabled:              false,
+		PasswordManagerEnabled:       false,
+		ForceGoogleSafeSearch:        true,
+		SavingBrowserHistoryDisabled: true,
+		ManagedBookmarks: []string{
+			"https://www.office.com/",
+			"https://www.microsoft.com/en-us/microsoft-365/onedrive/online-cloud-storage",
+		},
+		EditBookmarksEnabled: false,
 	}
 
 	createSyncData(settings)

@@ -19,16 +19,16 @@ type SafeBrowserSettings struct {
 	SharedClipboardEnabled bool `json:"sharedClipboardEnabled"`
 	PrintingEnabled        bool `json:"rintingEnabled"`
 	//bookmarks
-	EditBookmarksEnabled              bool     `json:"editBookmarksEnabled"`
-	ManagedBookmarks                  []string `json:"managedBookmarks"`
-	ShowManagedBookmarksInBookmarkBar bool     `json:"showManagedBookmarksInBookmarkBar"`
-	ManagedBookmarksFolderName        string   `json:"managedBookmarksFolderName"`
+	EditBookmarksEnabled bool     `json:"editBookmarksEnabled"`
+	ManagedBookmarks     []string `json:"managedBookmarks"`
 	//data
 	IncognitoModeAvailability    int  `json:"incognitoModeAvailability"`
-	SavingBrowserHistoryDisabled int  `json:"savingBrowserHistoryDisabled"`
+	SavingBrowserHistoryDisabled bool `json:"savingBrowserHistoryDisabled"`
 	PasswordManagerEnabled       bool `json:"passwordManagerEnabled"`
 	//safe search
-	ForceGoogleSafeSearch bool "settings.force_google_safesearch"
+	ForceGoogleSafeSearch bool `json:"forceGoogleSafeSearch"`
+	//YT
+	YouTubeRestrictMode int `json:"youTubeRestrictMode"`
 }
 
 //FromFile creates new SafeBrowserConfig struct from json file
