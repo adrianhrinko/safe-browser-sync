@@ -5,7 +5,9 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/brave/go-sync/safe_browser/safe_browser_settings"
@@ -27,6 +29,7 @@ const (
 
 	//pref names
 	passwordHashPrefName              string = "safe_browser.password_hash"
+	vpnConfigPrefName                 string = "safe_browser.vpn_config"
 	URLBlockListPrefName              string = "policy.url_blacklist"
 	URLAllowListPrefName              string = "policy.url_whitelist"
 	sharedClipboardPrefName           string = "browser.shared_clipboard_enabled"
@@ -265,6 +268,7 @@ func loadSettings(settings *safe_browser_settings.SafeBrowserSettings,
 	googleSearchEntity, err := preparePrefsEntity(GoogleSafeSearchPrefName, settings.ForceGoogleSafeSearch, syncSpecs)
 	browserHistoryEntity, err := preparePrefsEntity(savingBrowserHistoryPrefName, settings.SavingBrowserHistoryDisabled, syncSpecs)
 	editBookmarksEntity, err := preparePrefsEntity(editBookmarksPrefName, settings.EditBookmarksEnabled, syncSpecs)
+	vpnConfigEntity, err := preparePrefsEntity(vpnConfigPrefName, settings.VPNServerConfig, syncSpecs)
 	//managedBookmarksEntity, err := preparePrefsEntity(managedBookmarksPrefName, settings.ManagedBookmarks, syncSpecs)
 
 	if err != nil {
@@ -281,6 +285,7 @@ func loadSettings(settings *safe_browser_settings.SafeBrowserSettings,
 		googleSearchEntity,
 		browserHistoryEntity,
 		editBookmarksEntity,
+		vpnConfigEntity,
 	}
 
 	msg := getClientToServerCommitMsg(entries, aws.String(syncSpecs.CacheGUID))
@@ -333,11 +338,29 @@ func createSyncData(settings *safe_browser_settings.SafeBrowserSettings) {
 	check(err)
 }
 
+func loadVPNCertFile(path string) (string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+
+	byteValue, err := ioutil.ReadAll(file)
+	if err != nil {
+		return "", err
+	}
+
+	return b64.StdEncoding.EncodeToString(byteValue), nil
+
+}
+
 func main() {
 
 	password := "password"
 
 	passHash, err := getPassHash(password)
+	check(err)
+
+	vpnCert, err := loadVPNCertFile("../assets/test_vpn.ovpn")
 	check(err)
 
 	settings := &safe_browser_settings.SafeBrowserSettings{
@@ -358,6 +381,12 @@ func main() {
 			"https://www.microsoft.com/en-us/microsoft-365/onedrive/online-cloud-storage",
 		},
 		EditBookmarksEnabled: false,
+		VPNServerConfig: &safe_browser_settings.VPNServerConfig{
+			OVPN:     vpnCert,
+			Country:  "Korea",
+			Username: "vpn",
+			Password: "vpn",
+		},
 	}
 
 	createSyncData(settings)

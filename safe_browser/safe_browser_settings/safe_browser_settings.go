@@ -6,6 +6,14 @@ import (
 	"os"
 )
 
+//VPNServerConfig holds configuration for integrated VPN
+type VPNServerConfig struct {
+	Country  string `json:"country"`
+	OVPN     string `json:"ovpn"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 //SafeBrowserSettings stores safe browser configuration
 type SafeBrowserSettings struct {
 	//sync server
@@ -29,6 +37,8 @@ type SafeBrowserSettings struct {
 	ForceGoogleSafeSearch bool `json:"forceGoogleSafeSearch"`
 	//YT
 	YouTubeRestrictMode int `json:"youTubeRestrictMode"`
+	//VPN
+	VPNServerConfig *VPNServerConfig
 }
 
 //FromFile creates new SafeBrowserConfig struct from json file
