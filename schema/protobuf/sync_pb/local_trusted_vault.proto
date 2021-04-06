@@ -5,7 +5,7 @@
 syntax = "proto2";
 
 option optimize_for = LITE_RUNTIME;
-
+option go_package = "../sync_pb";
 package sync_pb;
 
 message LocalTrustedVaultKey {

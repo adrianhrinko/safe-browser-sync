@@ -3,6 +3,7 @@ package main
 import (
 	b64 "encoding/base64"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -113,6 +114,18 @@ func FetchPrefs(specs *sync_chain_specs.SyncChainSpecifics) {
 		err = proto.Unmarshal(p, pref)
 		check(err)
 		fmt.Println(proto.MarshalTextString(pref))
+		if *pref.GetPreference().Name == "safe_browser.vpn_config" {
+			var dat string
+			str := *pref.GetPreference().Value
+			err := json.Unmarshal([]byte(str), &dat)
+			check(err)
+			vpn_config, err := b64.StdEncoding.DecodeString(dat)
+			check(err)
+			fmt.Println("VPN CONFIG:")
+
+			fmt.Println(vpn_config)
+
+		}
 		fmt.Println("_____________________________________")
 	}
 

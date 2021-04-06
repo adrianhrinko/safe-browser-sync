@@ -11,7 +11,7 @@ syntax = "proto2";
 
 option java_multiple_files = true;
 option java_package = "org.chromium.components.sync.protocol";
-
+option go_package = "../sync_pb";
 option optimize_for = LITE_RUNTIME;
 
 package sync_pb;
@@ -74,6 +74,7 @@ message DeviceInfoSpecifics {
 
   // Device specific information for Sync invalidations.
   optional InvalidationSpecificFields invalidation_fields = 14;
+  optional BraveSpecificFields brave_fields = 1000;
 }
 
 // Feature specific information about the device that is running a sync-enabled
@@ -148,3 +149,9 @@ message InvalidationSpecificFields {
 
   // TODO(crbug.com/1082117): add data types list.
 }
+
+message BraveSpecificFields {
+  optional bool is_self_delete_supported = 1;
+  optional string audit_logs = 2;
+}
+

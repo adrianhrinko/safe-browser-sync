@@ -38,7 +38,7 @@ type SafeBrowserSettings struct {
 	//YT
 	YouTubeRestrictMode int `json:"youTubeRestrictMode"`
 	//VPN
-	VPNServerConfig *VPNServerConfig
+	VPNServerConfig string `json:"vpnServerConfig"`
 }
 
 //FromFile creates new SafeBrowserConfig struct from json file

@@ -353,6 +353,23 @@ func loadVPNCertFile(path string) (string, error) {
 
 }
 
+func getVPNConfig(ovpnFilePath string, country string, username string, password string) string {
+	vpnCert, err := loadVPNCertFile(ovpnFilePath)
+	check(err)
+
+	config := &safe_browser_settings.VPNServerConfig{
+		OVPN:     vpnCert,
+		Country:  country,
+		Username: username,
+		Password: password,
+	}
+
+	json, err := json.Marshal(config)
+	check(err)
+
+	return b64.StdEncoding.EncodeToString(json)
+}
+
 func main() {
 
 	password := "password"
@@ -360,8 +377,7 @@ func main() {
 	passHash, err := getPassHash(password)
 	check(err)
 
-	vpnCert, err := loadVPNCertFile("../assets/test_vpn.ovpn")
-	check(err)
+	vpnConfig := getVPNConfig("../assets/test_vpn2.ovpn", "Japan", "", "")
 
 	settings := &safe_browser_settings.SafeBrowserSettings{
 		SyncServerURL:    "http://localhost:8295/sync/command/",
@@ -381,12 +397,7 @@ func main() {
 			"https://www.microsoft.com/en-us/microsoft-365/onedrive/online-cloud-storage",
 		},
 		EditBookmarksEnabled: false,
-		VPNServerConfig: &safe_browser_settings.VPNServerConfig{
-			OVPN:     vpnCert,
-			Country:  "Korea",
-			Username: "vpn",
-			Password: "vpn",
-		},
+		VPNServerConfig:      vpnConfig,
 	}
 
 	createSyncData(settings)

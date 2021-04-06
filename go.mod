@@ -9,7 +9,7 @@ require (
 	github.com/getsentry/sentry-go v0.6.1
 	github.com/go-chi/chi v4.0.3+incompatible
 	github.com/go-redis/redis/v8 v8.0.0-beta.7
-	github.com/golang/protobuf v1.4.2
+	github.com/golang/protobuf v1.5.2
 	github.com/google/uuid v1.2.0
 	github.com/kr/pretty v0.2.0 // indirect
 	github.com/prometheus/client_golang v1.3.0
@@ -19,6 +19,6 @@ require (
 	github.com/stretchr/testify v1.6.1
 	github.com/tyler-smith/go-bip39 v0.0.0-20180716170310-95c66720ed7a
 	golang.org/x/crypto v0.0.0-20200728195943-123391ffb6de
-	google.golang.org/protobuf v1.23.0
+	google.golang.org/protobuf v1.26.0
 	gopkg.in/yaml.v2 v2.2.8 // indirect
 )
